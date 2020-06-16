@@ -8,7 +8,7 @@
 /// Wraps a deferred value in a reference-type class
 /// Holds a current value which can be resolved multiple times or finalized (to lock it)
 /// All resolved values are stored in an array and set
-public class DeferredReference<Type>: CustomStringConvertible, Hashable, Comparable where Type: Comparable & Hashable {
+public class DeferredReference<Type>: CustomStringConvertible, Hashable where Type: Hashable {
     
     /// The current deferred value
     public private(set) var current: Deferred<Type> = .empty
@@ -24,7 +24,7 @@ public class DeferredReference<Type>: CustomStringConvertible, Hashable, Compara
     
     // Computed properties -------------------------------- /
     
-    /// Gets count of resovled values (including duplicates)
+    /// Gets count of resolved values (including duplicates)
     public var count: Int { self.allResolved.count }
     
     /// Gets the value of the current deferred value (possibly `nil`)
@@ -49,7 +49,9 @@ public class DeferredReference<Type>: CustomStringConvertible, Hashable, Compara
      Resolves with a value, replacing any value resolved, if any.
      - Parameter value: Value to resolve with
      - Parameter finalize: If true, finalizes. When finalized, the current value can no longer be resolved and the stored value is final and immutable.
+     - Returns: The resolved  value if any
      */
+    @discardableResult
     public func resolve(_ value: Type, finalize: Bool = false) -> Type? {
         if finalized {
             return self.current.value
@@ -67,7 +69,9 @@ public class DeferredReference<Type>: CustomStringConvertible, Hashable, Compara
      When finalized, the current value can no longer be resolved and the stored value is final and immutable.
      Pass a value to resolve the final value first. Pass `nil` or omit a value to finalize with the last resolved value.
      - Parameter value: Value to resolve and finalize with. If omitted or `nil`, finalizes the last resolved value.
+     - Returns: The resolved  value if any
      */
+    @discardableResult
     public func finalize(_ value: Type? = nil) -> Type? {
         guard let value = value else {
             self.finalized = true
@@ -82,6 +86,7 @@ public class DeferredReference<Type>: CustomStringConvertible, Hashable, Compara
      Applies a transform callback on the resolved value and returns the result (or `nil` if unresovled)
      - Parameter transform: A callback function to apply to the resolved value
      */
+    @discardableResult
     public func map<ResultType>(_ transform: (Type) -> ResultType) -> ResultType? {
         return self.current.map(transform)
     }
@@ -90,6 +95,7 @@ public class DeferredReference<Type>: CustomStringConvertible, Hashable, Compara
      Applies a transform callback on all resolved values in order of resolution and returns the results in an array
      - Parameter transform: A callback function to apply to the resolved value
      */
+    @discardableResult
     public func mapAllResolved<ResultType>(_ transform: (Type) -> ResultType) -> [ResultType]? {
         return self.allResolved.map(transform)
     }
@@ -98,30 +104,25 @@ public class DeferredReference<Type>: CustomStringConvertible, Hashable, Compara
      Applies a transform callback on all values resolved (no duplicates) and returns the results in an array
      - Parameter transform: A callback function to apply to the resolved value
      */
+    @discardableResult
     public func mapValues<ResultType>(_ transform: (Type) -> ResultType) -> [ResultType]? {
         return self.values.map(transform)
     }
     
-    // Comparison and equality -------------------------------------- /
+    // Hashable -------------------------------------- /
     
-    /// Comparison of two deferred values
-    public static func < (lhs: DeferredReference<Type>, rhs: DeferredReference<Type>) -> Bool {
-        return lhs.current < rhs.current
+    /// Generates hash value
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(self.count)
+        _ = self.allResolved.map { hasher.combine($0) }
     }
+}
+
+extension DeferredReference: Equatable where Type: Equatable {
     
     /// Tests equality of two deferred values
     public static func == (lhs: DeferredReference<Type>, rhs: DeferredReference<Type>) -> Bool {
         return lhs.current == rhs.current
-    }
-    
-    /// Comparison of a deferred value to a value of it's wrapped type
-    public static func < (lhs: DeferredReference<Type>, rhs: Type) -> Bool {
-        return lhs.current < rhs
-    }
-    
-    /// Comparison of a deferred value to a value of it's wrapped type
-    public static func < (lhs: Type, rhs: DeferredReference<Type>) -> Bool {
-        return lhs < rhs.current
     }
     
     /// Tests equality of a deferred value to a value of it's wrapped type
@@ -133,12 +134,55 @@ public class DeferredReference<Type>: CustomStringConvertible, Hashable, Compara
     public static func == (lhs: Type, rhs: DeferredReference<Type>) -> Bool {
         return lhs == rhs.current
     }
+}
+
+extension DeferredReference: Comparable where Type: Comparable {
     
-    // Hashable -------------------------------------- /
+    /// Comparison of two deferred values
+    public static func < (lhs: DeferredReference<Type>, rhs: DeferredReference<Type>) -> Bool {
+        return lhs.current < rhs.current
+    }
+}
+
+extension DeferredReference where Type: Comparable {
     
-    /// Generates hash value
-    public func hash(into hasher: inout Hasher) {
-        hasher.combine(self.count)
-        self.allResolved.map { hasher.combine($0) }
+    /// Comparison of a deferred value to a value of it's wrapped type
+    public static func < (lhs: DeferredReference<Type>, rhs: Type) -> Bool {
+        return lhs.current < rhs
+    }
+    
+    /// Comparison of a deferred value to a value of it's wrapped type
+    public static func < (lhs: Type, rhs: DeferredReference<Type>) -> Bool {
+        return lhs < rhs.current
+    }
+    
+    /// Comparison of a deferred value to a value of it's wrapped type
+    public static func > (lhs: DeferredReference<Type>, rhs: Type) -> Bool {
+        return lhs.current > rhs
+    }
+    
+    /// Comparison of a deferred value to a value of it's wrapped type
+    public static func > (lhs: Type, rhs: DeferredReference<Type>) -> Bool {
+        return lhs > rhs.current
+    }
+    
+    /// Comparison of a deferred value to a value of it's wrapped type
+    public static func <= (lhs: DeferredReference<Type>, rhs: Type) -> Bool {
+        return lhs.current <= rhs
+    }
+    
+    /// Comparison of a deferred value to a value of it's wrapped type
+    public static func <= (lhs: Type, rhs: DeferredReference<Type>) -> Bool {
+        return lhs <= rhs.current
+    }
+    
+    /// Comparison of a deferred value to a value of it's wrapped type
+    public static func >= (lhs: DeferredReference<Type>, rhs: Type) -> Bool {
+        return lhs.current > rhs
+    }
+    
+    /// Comparison of a deferred value to a value of it's wrapped type
+    public static func >= (lhs: Type, rhs: DeferredReference<Type>) -> Bool {
+        return lhs >= rhs.current
     }
 }

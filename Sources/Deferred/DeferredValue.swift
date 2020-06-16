@@ -7,7 +7,7 @@
 
 /// Property wrapper to store a deferred value as a property
 @propertyWrapper
-public struct DeferredValue<Type>: Comparable where Type: Comparable & Hashable {
+public struct DeferredValue<Type> {
     
     /// Holds the deferred value
     private var deferred: Deferred<Type> = .empty
@@ -28,21 +28,27 @@ public struct DeferredValue<Type>: Comparable where Type: Comparable & Hashable 
     }
     
     /// Wrapped value
-    var wrappedValue: Type? {
+    public var wrappedValue: Type? {
         get { deferred.value }
         set { self.set(newValue) }
     }
     
     /// Value accessed with the $
-    var projectedValue: Deferred<Type> { deferred }
-    
-    /// Comparison
-    static func < (lhs: DeferredValue<Type>, rhs: DeferredValue<Type>) -> Bool {
-        lhs.deferred < rhs.deferred
-    }
+    public var projectedValue: Deferred<Type> { deferred }
+}
+
+extension DeferredValue: Equatable where Type: Equatable {
     
     /// Tests equality
-    static func == (lhs: DeferredValue<Type>, rhs: DeferredValue<Type>) -> Bool {
+    public static func == (lhs: DeferredValue<Type>, rhs: DeferredValue<Type>) -> Bool {
         lhs.deferred == rhs.deferred
+    }
+}
+
+extension DeferredValue: Comparable where Type: Comparable {
+    
+    /// Comparison
+    public static func < (lhs: DeferredValue<Type>, rhs: DeferredValue<Type>) -> Bool {
+        lhs.deferred < rhs.deferred
     }
 }
